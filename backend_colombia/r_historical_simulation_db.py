@@ -1,15 +1,13 @@
 import io
-import requests
+import numpy as np
 import pandas as pd
 import datetime as dt
-from tqdm import tqdm
 import concurrent.futures
 from sqlalchemy import create_engine
 
 import time
 
 from backend_auxiliar import data_request
-import sys
 
 
 ####################################################################
@@ -24,6 +22,9 @@ class Update_historical_simulation_db:
 		before = time.time()
 
 		# Postgres secure data
+		
+		n_chunks = 10
+
 		pgres_password       = 'pass'
 		pgres_databasename   = 'gess_streamflow_co'
 		self.pgres_tablename_func = lambda comid : 'hs_{}'.format(comid)
@@ -47,129 +48,98 @@ class Update_historical_simulation_db:
 		# Establish connection
 		db   = create_engine("postgresql+psycopg2://postgres:{0}@localhost:5432/{1}".format(pgres_password, 
  																							pgres_databasename))
-		# Read comid list
+
+		# Connect to database out of for loop
 		conn = db.connect()
-		comids = pd.read_sql('select {} from {}'.format(station_comid_name, station_table_name), conn)\
-				   .values\
-				   .flatten()\
-				   .tolist()
-		conn.close()
+		try:
+			# Read comids list
+			comids = pd.read_sql('select {} from {}'.format(station_comid_name, station_table_name), conn)\
+					   .values\
+					   .flatten()\
+					   .tolist()
+		finally:
+			conn.close()
+
 
 		# In case of one comid is requiered, only remove the comment simbol (#) and in the list add the
 		# comid to call
-		# comids = comids[7000:]
+		# comids = comids[:100]
 
-		# Download data
-		with concurrent.futures.ThreadPoolExecutor(max_workers = 3) as executor:
-			list(tqdm(executor.map(lambda c : self.__download_data__(c, url_fun, db),
-								   comids),
-					  total=len(comids)))
+		# Split list for clear the cache memory
+		comids_chunk = np.array_split(comids, n_chunks)
+		
+		# Run chunk by chunk
+		for chunk, comids in enumerate(comids_chunk, start = 1):
 
-		print('Delay : {} seg.'.format(time.time() - before))
+			# Download data and insert
+			with concurrent.futures.ThreadPoolExecutor(max_workers = 3) as executor:
+				_ = list(executor.map(lambda c : self.__parallelization__(c, url_fun, db),
+									  comids))
+
+			print('Update : {:.0f} %, Delay : {:.4f} seg.'.format(100 * chunk / n_chunks, time.time() - before))
+
+
+	def __parallelization__(self, c, url_fun, db):
+		session = db.connect()
+		try:
+		 	self.__download_data__(c, url_fun, conn=session)
+		finally:
+		 	session.close()
 
 
 	def __download_data__(self, 
 						  comid : str, 
 						  url_fun : "func",
-						  db : "POSTGRES database"):
+						  conn : "POSTGRES database connection"):
 		"""
 		Seriealized download function
 		Input:
 			comid      : str  -> comid to download
 			url        : func -> function to download data
-			db         : pgdb -> Postgres h
+			con        : pgdb -> Postgres database connection
 		"""
 		# print('Download : {}'.format(comid))
 
 		# Get data for download
 		url_comid, params_comid = url_fun(comid)
 
-		# Make a requests
 		df = data_request(url=url_comid, params=params_comid)
-
-		# .___.
-		if "ERROR" == df:
-			df = pd.DataFrame(data = {self.dict_aux['Datetime column name']    : 3 * [pd.NaT],
-									  self.dict_aux['Data column name prefix'] : 3 * [float('nan')]})
-		else:
-			"""
-			The next try-except block has the same function and the same result. In the try statement, the result 
-			is fast but requires a correct date format. In the except statement, the date format is not needed, but 
-			it is slower.
-			"""
-			'''
-			try:
-				tmp = pd.read_csv(io.StringIO(df),
-				 				 parse_dates = [self.dict_aux['Datetime column name']],
-								 date_parser = lambda x : dt.datetime.strptime(x,
-								 											   self.dict_aux['Datetime column format']),
-								 index_col   = [self.dict_aux['Datetime column name']],
-								)
-			except:
-			'''
-			# print('Review download')
-			tmp = pd.read_csv(io.StringIO(df))
-			tmp[self.dict_aux['Datetime column name']] = pd.to_datetime(tmp[self.dict_aux['Datetime column name']])
-			tmp.set_index(self.dict_aux['Datetime column name'], inplace=True)
-			
-			df = tmp
+		# Make a requests
+		# df = data_request(url=url_comid, params=params_comid)
+		df = self.__build_dataframe__(df, url_comid, params_comid)
 
 		# Review number of data
 		if df.shape[0] <= 2:
 			df = data_request(url=url_comid, params=params_comid)
+			df = self.__build_dataframe__(df, url_comid, params_comid)
 
-			if "ERROR" == df:
-				df = pd.DataFrame(data = {self.dict_aux['Datetime column name']    : 3 * [pd.NaT],
-				 						  self.dict_aux['Data column name prefix'] : 3 * [float('nan')]})
-			else:
-				"""
-				The next try-except block has the same function and the same result. In the try statement, the result 
-				is fast but requires a correct date format. In the except statement, the date format is not needed, but 
-				it is slower.
-				"""
-				'''
-				try:
-					tmp = pd.read_csv(io.StringIO(df),
-				 					  parse_dates = [self.dict_aux['Datetime column name']],
-									  date_parser = lambda x : dt.datetime.strptime(x,
-								 											 	    self.dict_aux['Datetime column format']),
-									  index_col   = [self.dict_aux['Datetime column name']],
-									 )
-				except:
-					print('Review download')
-				'''
-				tmp = pd.read_csv(io.StringIO(df))
-				tmp[self.dict_aux['Datetime column name']] = pd.to_datetime(tmp[self.dict_aux['Datetime column name']])
-				tmp.set_index(self.dict_aux['Datetime column name'], inplace=True)
-			
-			df = tmp
-
-
-		# Fix column names
+		# Fix column names for comid identify
 		df.rename(columns = {self.dict_aux['Data column name'] : \
-						     self.dict_aux['Data column name prefix'] + str(comid)},
+							 self.dict_aux['Data column name prefix'] + str(comid)},
 				  inplace = True)
 
-		# Insert to database
-		conn = db.connect()
+		# Insert data to database with close connection secured
 		df.to_sql(self.pgres_tablename_func(comid), con=conn, if_exists='replace', index=True)
 
-		# Close connection
-		conn.close()
+		del df
 
 		# print('Download : {}'.format(comid))
 
 		return 0
 
 
-	@property
-	def df(self):
-		return self.__df
-	@df.setter
-	def df(self, input_data):
+	def __build_dataframe__(self, input_data, url, params):
+		"""
+		Build dataframe from return value of data_request sunction.
+		Input :
+			input_data : str/bites -> Return of data_request function
+		Output:
+			pandas.DataFrame -> Table with results
+		"""
 		if "ERROR" == input_data:
-			self.__df = pd.DataFrame(data = {self.dict_aux['Datetime column name']    : 3 * [pd.NaT],
-											 self.dict_aux['Data column name prefix'] : 3 * [float('nan')]})
+			rv = pd.DataFrame(data = {self.dict_aux['Datetime column name']    : [pd.NaT],
+									  self.dict_aux['Data column name prefix'] : [float('nan')]})
+			return rv
 		else:
 			"""
 			The next try-except block has the same function and the same result. In the try statement, the result 
@@ -183,14 +153,15 @@ class Update_historical_simulation_db:
 								 											   self.dict_aux['Datetime column format']),
 								 index_col   = [self.dict_aux['Datetime column name']],
 								)
-			except:
-				print('Review download')
-				rv = pd.read_csv(io.StringIO(input_data))
-				rv[self.dict_aux['Datetime column name']] = pd.to_datetime(rv[self.dict_aux['Datetime column name']])
-				rv.set_index(self.dict_aux['Datetime column name'], inplace=True)
-			
-			self.__df = rv
+			except Exception as e:
+				# TODO : Try to remove this pice of code or change location
+				# If the data download fails, the download process will be recursive.
+				print('Exception: {}'.format(e))
+				df = data_request(url, params)
+				rv = self.__build_dataframe__(df, url, params)
 
+			finally:
+				return rv
 
 
 if __name__ == "__main__":

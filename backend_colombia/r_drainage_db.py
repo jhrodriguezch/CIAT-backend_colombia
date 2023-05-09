@@ -29,30 +29,31 @@ class Update_drainage_db:
 				  'typeName'    : f'{id_HS}%3A{layer}',
 				  'maxFeatures' : '9999'}
 
-		columns_to_extract = ['HydroID']
- 
+		columns_to_extract = ['HydroID'] 
 
 		# ------------------- MAIN -------------------
 		# Establish connection
 		db   = create_engine("postgresql+psycopg2://postgres:{0}@localhost:5432/{1}".format(pgres_password, pgres_databasename))
-		conn = db.connect()	
-	
-		# Build hydroshare link
-		full_url = url + '?' + '&'.join([ f'{key}={value}' for key, value in params.items() ])
+		try:
+			conn = db.connect()	
+		
+			# Build hydroshare link
+			full_url = url + '?' + '&'.join([ f'{key}={value}' for key, value in params.items() ])
 
-		# Download drainage list
-		rv = get_data_wfs(url   = full_url,
-						  id_HS = id_HS,
-						  layer = layer)
-		rv = pd.DataFrame(rv)
-		rv = rv[columns_to_extract].copy()
-		rv.rename(columns = {col : col.lower() for col in rv.columns}, inplace = True)
+			# Download drainage list
+			rv = get_data_wfs(url   = full_url,
+							  id_HS = id_HS,
+							  layer = layer)
+			rv = pd.DataFrame(rv)
+			rv = rv[columns_to_extract].copy()
+			rv.rename(columns = {col : col.lower() for col in rv.columns}, inplace = True)
 
-		# Insert to database
-		rv.to_sql(pgres_tablename, con=conn, if_exists='replace', index=False)
+			# Insert to database
+			rv.to_sql(pgres_tablename, con=conn, if_exists='replace', index=False)
 
-		# Close connection
-		conn.close()
+		finally:
+			# Close connection
+			conn.close()
 
 
 

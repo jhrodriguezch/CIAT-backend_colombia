@@ -27,14 +27,18 @@ def data_request(url, params, cnt_fail=0) -> pd.DataFrame:
 
 	if data.status_code == 200:
 		# Success condition
-		return data.text
-	elif data.status_code != 200 and cnt_fail > 3:
+		rv = data.text
+		data.close()
+		return rv
+	elif data.status_code != 200 and cnt_fail > 5:
 		# Condition failure
+		data.close()
 		print('Download fail')
 		return "ERROR"
 	else:
 		# Condition restart
 		# print('Try : {}'.format(cnt_fail))
+		data.close()
 		cnt_fail += 1
 		return data_request(url, params, cnt_fail=cnt_fail)
 
@@ -54,8 +58,11 @@ def get_data_wfs(url, id_HS, layer) -> list:
 		cont = requests.get(url)
 		if cont.status_code < 400:
 			status_fail = False
-			cont = cont.text
+			rv = cont.text
+			cont.close()
+			cont = rv
 		if cnt > 3:
+			cont.close()
 			print('Error in {} download.'.format(url))
 			return []
 		cnt += 1

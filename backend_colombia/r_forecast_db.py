@@ -1,8 +1,9 @@
 import io
-import requests
+# import requests
+import numpy as np
 import pandas as pd
-from tqdm import tqdm
 import datetime as dt
+# from tqdm import tqdm
 import concurrent.futures
 from sqlalchemy import create_engine
 
@@ -21,6 +22,7 @@ class Update_forecast_db:
 	def __init__(self):
 
 		before = time.time()
+		n_chunks = 10
 
 		# Postgres secure data
 		pgres_password       = 'pass'
@@ -35,9 +37,8 @@ class Update_forecast_db:
 		url     = 'https://geoglows.ecmwf.int/api/ForecastEnsembles/'
 		url_fun = lambda x : (url ,  {'reach_id'      : x,
 				                      'return_format' : 'csv'}) 
-		dict_gss_aux = {'Datetime column name'   : 'datetime',
-						'Datetime column format' : '%Y-%m-%dT%H:%M:%SZ'}
-		self.dict_aux = dict_gss_aux
+		self.dict_aux = {'Datetime column name'   : 'datetime',
+						 'Datetime column format' : '%Y-%m-%dT%H:%M:%SZ'}
 
 		# ------------------- MAIN --------------------
 		# Establish connection
@@ -45,24 +46,40 @@ class Update_forecast_db:
  																							pgres_databasename))
 	
 		# Read comid list
-		conn = db.connect()
-		comids = pd.read_sql('select {} from {}'.format(station_comid_name, station_table_name), conn)\
-				   .values\
-				   .flatten()\
-				   .tolist()
-		conn.close()		
+		try:
+			conn = db.connect()
+			comids = pd.read_sql('select {} from {}'.format(station_comid_name, station_table_name), conn)\
+					   .values\
+					   .flatten()\
+					   .tolist()
+		finally:
+			conn.close()
 
 		# In case of one comid is requiered, only remove the comment simbol (#) and in the list add the
 		# comid to call
-		# comids = comids[]
-		
-		# Download data from comid
-		with concurrent.futures.ThreadPoolExecutor(max_workers = 3) as executor:
-			list(tqdm(executor.map(lambda c : self.__download_data__(c, url_fun, db), 
-					 		  comids),
-			 	     total = len(comids)))
+		# comids = comids[:100]
 
-		print('Delay : {} seg'.format(time.time() - before))
+		# Split list for clear the cache memory
+		comids_chunk = np.array_split(comids, n_chunks)
+
+		# Run chunk by chunk
+		for chunk, comids in enumerate(comids_chunk, start = 1):
+
+			# Download data from comid
+			with concurrent.futures.ThreadPoolExecutor(max_workers = 3) as executor:
+				_ = list(executor.map(lambda c : self.__parallelization__(c, url_fun, db), 
+									  comids))
+
+			print('Update : {:.0f} %, Delay : {:.4f} seg'.format(100 * chunk / n_chunks, time.time() - before))
+
+
+	def __parallelization__(self, c, url_fun, db):
+		# Parallelization of ssesion out of daownload data
+		session = db.connect()
+		try:
+			self.__download_data__(c, url_fun, session)
+		finally:
+			session.close()
 
 
 	def __download_data__(self, comid, url, db):
@@ -79,50 +96,59 @@ class Update_forecast_db:
 		url_comid, params_comid = url(comid)
 
 		# Make server request
-		self.df = data_request(url=url_comid, params=params_comid)
+		df = data_request(url=url_comid, params=params_comid)
+		df = self.__build_dataframe__(df, url_comid, params_comid)
 
 		# Review number of data download
-		if self.df.shape[1] != 52 or\
-		   self.df.shape[0] <= 2:
-			self.df = self.data_request(url=url_comid, params=params_comid)
-
-		# Review of number of data
-		# if self.df.shape[0] <= 2:
-		# 	self.df = self.data_request(url=url_comid, params=params_comid) 
+		if df.shape[1] != 52 or df.shape[0] <= 2:
+			df = data_request(url=url_comid, params=params_comid)
+			df = self.__build_dataframe__(df, url, params)
 
 		# Build table name
 		table_name = self.pgres_tablename_func(comid)
 		
 		# Insert to data
-		conn = db.connect()
-		self.df.to_sql(table_name, con=conn, if_exists='replace', index=True)
+		df.to_sql(table_name, con=db, if_exists='replace', index=True)
 
-		# Close connection
-		conn.close()
-
-		print('Download : {}'.format(comid))
+		# print('Download : {}'.format(comid))
 
 		return 0
 
 
-	# Other methods
-	@property
-	def df(self):
-		return self.__df
-	@df.setter
-	def df(self, input_data):
-		if 'ERROR' == input_data:
-			self.__df = pd.DataFrame(data = {self.dict_aux['Datetime column name'] : 3 * [pd.NaT],
-											 'ensemble'                            : 3 * [float('nan')]})
+	def __build_dataframe__(self, input_data, url, params):
+		"""
+		Build dataframe from return value of data_request sunction.
+		Input :
+			input_data : str/bites -> Return of data_request function
+		Output:
+			pandas.DataFrame -> Table with results
+		"""
+		if "ERROR" == input_data:
+			rv = pd.DataFrame(data = {self.dict_aux['Datetime column name']    : [pd.NaT],
+									  self.dict_aux['Data column name prefix'] : [float('nan')]})
+			return rv
 		else:
-			data = pd.read_csv(io.StringIO(input_data),
-							   index_col   = [self.dict_aux['Datetime column name']],
-							   parse_dates = [self.dict_aux['Datetime column name']],
-							   date_parser = lambda x : dt.datetime.strptime(x,
-																			 self.dict_aux['Datetime column format']))
-			self.__df = data
+			"""
+			The next try-except block has the same function and the same result. In the try statement, 
+			the result is fast but requires a correct date format. In the except statement, the date
+			format is not needed, but it is slower.
+			"""
+			try:
+				rv = pd.read_csv(io.StringIO(input_data),
+				 				 parse_dates = [self.dict_aux['Datetime column name']],
+								 date_parser = lambda x : dt.datetime.strptime(x,
+								 											   self.dict_aux['Datetime column format']),
+								 index_col   = [self.dict_aux['Datetime column name']],
+								)
+			except Exception as e:
+				# TODO : Try to remove this pice of code or change location
+				# If the data download fails, the download process will be recursive.
+				print('Exception: {}'.format(e))
+				df = data_request(url, params)
+				rv = self.__build_dataframe__(df, url, params)
 
-
+			finally:
+				return rv
 
 
 if __name__ == "__main__":
