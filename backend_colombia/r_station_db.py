@@ -4,33 +4,13 @@ import pandas as pd
 import datetime as dt
 from sqlalchemy import create_engine
 
-from backend_auxiliar import get_data_wfs
+from backend_auxiliar import get_data_wfs, get_station_info
 
 ########################################################################
 #                                                                      #
 #                           r_station_db.py                            #
 #                                                                      #
 ########################################################################
-
-class Update_station_info:
-	def __init__(self):
-		# General informatio
-		file_name     = './CNE_IDEAM.csv'
-		col_to_remove = ['OBJECTID', 'latitud', 'longitud', 'observacion', 'ENTIDAD']
-
-		# Postgres secure data
-		pgres_password     = 'pass'
-		pgres_databasename = 'gess_streamflow_co'
-		pgres_tablename    = 'stations_info'
-
-		# ---------- MAIN ---------
-		## Read dataframe
-		db = pd.read_csv(file_name, sep=';')
-		db.drop(col_to_remove, axis=1, inplace=True)
-		
-		print(db.head(1).T)
-		
-
 
 class Update_station_db:
 	def __init__(self):
@@ -64,7 +44,6 @@ class Update_station_db:
 		# ---------- MAIN ---------- 
 		# Establish connection
 		db   = create_engine("postgresql+psycopg2://postgres:{0}@localhost:5432/{1}".format(pgres_password, pgres_databasename))
-		# conn = db.connect()
 
 		# Build hidroshare link
 		full_url = url + '?' + '&'.join([ f'{key}={value}' for key, value in params.items() ])
@@ -77,6 +56,12 @@ class Update_station_db:
 		# Wfs to dataframe
 		rv = pd.DataFrame(rv)
 		rv = self.__fix_dataframe__(rv)
+
+		# Include extra info in station
+		station_info = get_station_info()
+		station_info['CODIGO'] = station_info['CODIGO'].astype(str)
+		rv['codigo'] = rv['codigo'].astype(str)
+		rv = rv.merge(station_info, how='left', left_on='codigo', right_on='CODIGO')
 
 		# Remove capitalize letters for fix columns names for database
 		rv.rename(columns={str(col) : str(col).lower() for col in rv.columns}, inplace=True)
@@ -118,8 +103,6 @@ class Update_station_db:
 if __name__ == '__main__':
 	
 	print(' Station database updating. '.center(70, '-'))
-	# Load station information
-	# Update_station_info()
 	# Update station historical validation tool
 	Update_station_db()
 	print(' Station database updated. '.center(70, '-'))

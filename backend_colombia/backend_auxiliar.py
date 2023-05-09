@@ -11,6 +11,22 @@ import pandas as pd
 #
 
 
+def get_station_info():
+	# General informatio
+	file_name     = './CNE_IDEAM.csv'
+	col_to_get = ['CODIGO', 'altitud', 'DEPARTAMENTO', 'AREA_OPERATIVA', 'AREA_HIDROGRAFICA', 'ZONA_HIDROGRAFICA'    ]
+	# Postgres secure data
+	gres_password     = 'pass'
+	pgres_databasename = 'gess_streamflow_co'
+	pgres_tablename    = 'stations_info'
+
+	# ---------- MAIN ---------
+	## Read dataframe
+	db = pd.read_csv(file_name, sep=';')
+	db = db[col_to_get]
+	return db
+
+
 def data_request(url, params, cnt_fail=0) -> pd.DataFrame:
 	"""
 	Make a recursive request form url for 3 times
