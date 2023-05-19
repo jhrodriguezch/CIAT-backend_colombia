@@ -6,8 +6,11 @@
 # postgres
 
 cd ~/backend_colombia
+eval "$(conda shell.bash hook)"
 conda activate gess
 
-python r_streamflow_db.py
-python r_station_db.py
-python r_observed_data_db.py:
+python r_drainage_db.py
+python r_station_db.py 'Selected_Stations_Colombia_Q_v0.csv' 'ID' 'new_comid' 'stations_streamflow' 'Longitude' 'Latitude'
+python r_station_db.py 'Selected_Stations_Colombia_WL_v4.csv' 'CODIGO' 'new_COMID' 'stations_waterlevel' 'longitud' 'latitud'
+# add water level data charge
+python r_observed_data_db.py

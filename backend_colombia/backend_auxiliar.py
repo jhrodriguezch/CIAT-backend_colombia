@@ -1,4 +1,5 @@
 import re
+import math
 import requests
 import pandas as pd
 
@@ -10,11 +11,14 @@ import pandas as pd
 #
 #
 
+def gumbel_1(std: float, xbar: float, rp: int or float) -> float:
+	return -math.log(-math.log(1 - (1 / rp))) * std * .7797 + xbar - (.45 * std)
+
 
 def get_station_info():
 	# General informatio
-	file_name     = './CNE_IDEAM.csv'
-	col_to_get = ['CODIGO', 'altitud', 'DEPARTAMENTO', 'AREA_OPERATIVA', 'AREA_HIDROGRAFICA', 'ZONA_HIDROGRAFICA'    ]
+	file_name     = './data/CNE_IDEAM.csv'
+	col_to_get = ['CODIGO', 'altitud', 'DEPARTAMENTO', 'AREA_OPERATIVA', 'AREA_HIDROGRAFICA', 'ZONA_HIDROGRAFICA']
 	# Postgres secure data
 	gres_password     = 'pass'
 	pgres_databasename = 'gess_streamflow_co'

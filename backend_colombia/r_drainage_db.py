@@ -34,20 +34,23 @@ class Update_drainage_db:
 		# ------------------- MAIN -------------------
 		# Establish connection
 		db   = create_engine("postgresql+psycopg2://postgres:{0}@localhost:5432/{1}".format(pgres_password, pgres_databasename))
+
+		# Build hydroshare link
+		full_url = url + '?' + '&'.join([ f'{key}={value}' for key, value in params.items() ])
+
+		# Download drainage list
+		rv = get_data_wfs(url   = full_url,
+						  id_HS = id_HS,
+						  layer = layer)
+		rv = pd.DataFrame(rv)
+		rv = rv[columns_to_extract].copy()
+		rv.rename(columns = {col : col.lower() for col in rv.columns}, inplace = True)
+
+		# Insert alert column
+		rv['alert'] = ['R0'] * len(rv)
+
 		try:
-			conn = db.connect()	
-		
-			# Build hydroshare link
-			full_url = url + '?' + '&'.join([ f'{key}={value}' for key, value in params.items() ])
-
-			# Download drainage list
-			rv = get_data_wfs(url   = full_url,
-							  id_HS = id_HS,
-							  layer = layer)
-			rv = pd.DataFrame(rv)
-			rv = rv[columns_to_extract].copy()
-			rv.rename(columns = {col : col.lower() for col in rv.columns}, inplace = True)
-
+			conn = db.connect()
 			# Insert to database
 			rv.to_sql(pgres_tablename, con=conn, if_exists='replace', index=False)
 
