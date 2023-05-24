@@ -19,7 +19,7 @@ class Update_alarm_level:
 		pgres_databasename = 'gess_streamflow_co'
 
 		# Database to update
-		pgres_tab_name        = 'stations'
+		pgres_tab_name        = 'stations_streamflow'
 		pgres_tab_coln_id     = 'codigo'
 		pgres_tab_coln_comid  = 'comid'
 		pgres_tab_coln_update = 'alert'
@@ -105,6 +105,7 @@ class Update_alarm_level:
 
 			# Result
 			alert_rv.append(alert)
+			print(row_id, alert)
 
 		conn = db.connect()
 		try:
