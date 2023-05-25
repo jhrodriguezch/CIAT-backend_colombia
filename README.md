@@ -1,65 +1,63 @@
 
 # CIAT-backend_colombia
 
-Working progress
-Routines fot backend for IDEAM tethys colombia apps
+Backend routines for the IDEAM tethys colombia apps.
 
 ## Description
 
-Based on the different routines described here, the objective is to build the database for the functioning of the various developed applications.
+This tool facilitates the population of databases created for the tools developed in Tethys for IDEAM. The tool requests data from the observed database hosted in HydroShare, as well as the simulated data in the GeoGloWS database. Additionally, it generates alert levels associated with different study stations.
 
 ## Getting Started
 
 ### Dependencies
 
-* Describe any prerequisites, libraries, OS version, etc., needed before installing program.
-* ex. Windows 10
+* python 3.* is recommended
+* Python dependences:
+    re
+    math
+    numpy
+    pandas
+    requests
+    datetime
+    geoglows
+    psycopg2
+    sqlalchemy
+    concurrent
 
 ### Installing
 
-* How/where to download your program
-* Any modifications needed to be made to files/folders
+* Does not need installing
 
 ### Executing program
 
-* How to run the program
-* Step-by-step bullets
+* Run in python environment as a script or run bash files
 ```
-code blocks for commands
+./onetimeonly.sh
+./monthly.sh
+./daily.sh
 ```
 
 ## Help
 
-Any advise for common problems or issues.
-```
-command to run if program contains helper info
-```
+* You need run first onetimeonly.sh, follow by monthly.sh and finally, daily.sh 
+* Run after the postgres data base need be built
 
 ## Authors
 
 Contributors names and contact info
 
-ex. Dominique Pizzie  
-ex. [@DomPizzie](https://twitter.com/dompizzie)
+Eng. Jhonatan Chaves [@jhrodriguezch](https://github.com/jhrodriguezch)
 
 ## Version History
 
-* 0.2
-    * Various bug fixes and optimizations
-    * See [commit change]() or See [release history]()
 * 0.1
     * Initial Release
 
 ## License
 
-This project is licensed under the [NAME HERE] License - see the LICENSE.md file for details
+This project is licensed under the MIT License.
 
 ## Acknowledgments
 
-Inspiration, code snippets, etc.
-* [awesome-readme](https://github.com/matiassingers/awesome-readme)
-* [PurpleBooth](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2)
-* [dbader](https://github.com/dbader/readme-template)
-* [zenorocha](https://gist.github.com/zenorocha/4526327)
-* [fvcproductions](https://gist.github.com/fvcproductions/1bfc2d4aecb01a834b46)
+*
  

@@ -152,6 +152,7 @@ class Update_historical_observed_data:
 
 
 if __name__ == '__main__':
+	# TODO : Add download observed data for water level forecast
 	print(' Data database updating. '.center(70, '-'))
 	'''
 	if sys.argw[1] == '-streamflow'
