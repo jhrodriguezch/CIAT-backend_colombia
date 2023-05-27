@@ -1,4 +1,5 @@
 import os
+import sys
 from dotenv import load_dotenv
 import io
 import numpy as np
@@ -29,7 +30,10 @@ class Update_forecast_record_db:
 		user = os.getlogin()
 		user_dir = os.path.expanduser('~{}'.format(user))
 		os.chdir(user_dir)
-		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+		try:
+			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+		except:
+			os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
 
 
 		# Import enviromental variables
@@ -44,8 +48,11 @@ class Update_forecast_record_db:
 		self.pgres_tablename_func = lambda comid : 'fr_{}'.format(comid)
 
 		# Comid column name from postgres database
-		station_table_name = 'drainage'
-		station_comid_name = 'HydroID'
+		# TODO : Only for test
+		# station_table_name = 'drainage'
+		station_table_name = 'stations_streamflow'
+		# station_comid_name = 'HydroID'
+		station_comid_name = 'comid'
 
 		# GEOGloWS Streamflow Servises dictionary
 		url     = 'https://geoglows.ecmwf.int/api/ForecastRecords/' 
@@ -144,7 +151,7 @@ class Update_forecast_record_db:
 		# Insert to database
 		df.to_sql(self.pgres_tablename_func(comid), con=db, if_exists='replace', index=True)
 
-		# print('Download : {}'.format(comid))
+		print('Download : {}'.format(comid))
 
 		return 0
 

@@ -1,4 +1,5 @@
 import os
+import sys
 from dotenv import load_dotenv
 import io
 import numpy as np
@@ -30,7 +31,10 @@ class Update_historical_simulation_db:
 		user = os.getlogin()
 		user_dir = os.path.expanduser('~{}'.format(user))
 		os.chdir(user_dir)
-		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+		try:
+			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+		except:
+			os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
 
 		# Import enviromental variables
 		load_dotenv()
@@ -43,8 +47,11 @@ class Update_historical_simulation_db:
 		self.pgres_tablename_func = lambda comid : 'hs_{}'.format(comid)
 
 		# Comid column name from postgres database
-		station_table_name = 'drainage'
-		station_comid_name = 'HydroID'
+		# TODO : Only for test
+		# station_table_name = 'drainage'
+		station_table_name = 'stations_streamflow'
+		# station_comid_name = 'HydroID'
+		station_comid_name = 'comid'
 
 		# GEOGloWS Streamflow Servises dictionary
 		url     = 'https://geoglows.ecmwf.int/api/HistoricSimulation/' 
@@ -74,7 +81,6 @@ class Update_historical_simulation_db:
 		finally:
 			conn.close()
 
-
 		# In case of one comid is requiered, only remove the comment simbol (#) and in the list add the
 		# comid to call
 		# comids = comids[:100]
@@ -86,7 +92,7 @@ class Update_historical_simulation_db:
 		for chunk, comids in enumerate(comids_chunk, start = 1):
 
 			# Download data and insert
-			with concurrent.futures.ThreadPoolExecutor(max_workers = 3) as executor:
+			with concurrent.futures.ThreadPoolExecutor(max_workers = 2) as executor:
 				_ = list(executor.map(lambda c : self.__parallelization__(c, url_fun, db),
 									  comids))
 
