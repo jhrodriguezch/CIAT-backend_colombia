@@ -31,10 +31,8 @@ class Update_historical_simulation_db:
 		user = os.getlogin()
 		user_dir = os.path.expanduser('~{}'.format(user))
 		os.chdir(user_dir)
-		try:
-			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
-		except:
-			os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
+		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+		# os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
 
 		# Import enviromental variables
 		load_dotenv()
