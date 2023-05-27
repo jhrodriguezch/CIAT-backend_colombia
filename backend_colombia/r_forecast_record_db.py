@@ -89,7 +89,7 @@ class Update_forecast_record_db:
 		for chunk, comids in enumerate(comids_chunk, start = 1):
 
 			# Download data
-			with concurrent.futures.ThreadPoolExecutor(max_workers = 3) as executor:
+			with concurrent.futures.ThreadPoolExecutor(max_workers = 2) as executor:
 				list(executor.map(lambda c : self.__parallelization__(c, url_fun, start_date, db),
 								  comids)
 					)

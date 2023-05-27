@@ -46,7 +46,7 @@ class Update_forecast_db:
 
 		# Postgres secure data
 		pgres_password       = DB_PASS
-		pgres_databasename   = 'gess_streamflow_co'
+		pgres_databasename   = DB_NAME
 		self.pgres_tablename_func = lambda comid : 'f_{}'.format(comid)
 
 		# Comid column name from postgres database
@@ -67,8 +67,8 @@ class Update_forecast_db:
  																					   pgres_databasename))
 	
 		# Read comid list
+		conn = db.connect()
 		try:
-			conn = db.connect()
 			comids = pd.read_sql('select {} from {}'.format(station_comid_name, station_table_name), conn)\
 					   .values\
 					   .flatten()\
@@ -87,7 +87,7 @@ class Update_forecast_db:
 		for chunk, comids in enumerate(comids_chunk, start = 1):
 
 			# Download data from comid
-			with concurrent.futures.ThreadPoolExecutor(max_workers = 3) as executor:
+			with concurrent.futures.ThreadPoolExecutor(max_workers = 2) as executor:
 				_ = list(executor.map(lambda c : self.__parallelization__(c, url_fun, db), 
 									  comids))
 
