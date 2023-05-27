@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 import io
 import numpy as np
 import pandas as pd
@@ -22,11 +24,22 @@ class Update_historical_simulation_db:
 		before = time.time()
 
 		# Postgres secure data
-		
 		n_chunks = 10
 
-		pgres_password       = 'pass'
-		pgres_databasename   = 'gess_streamflow_co'
+		# Change the work directory
+		user = os.getlogin()
+		user_dir = os.path.expanduser('~{}'.format(user))
+		os.chdir(user_dir)
+		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+
+		# Import enviromental variables
+		load_dotenv()
+		DB_USER = os.getenv('DB_USER')
+		DB_PASS = os.getenv('DB_PASS')
+		DB_NAME = os.getenv('DB_NAME')
+
+		pgres_password       = DB_PASS
+		pgres_databasename   = DB_NAME
 		self.pgres_tablename_func = lambda comid : 'hs_{}'.format(comid)
 
 		# Comid column name from postgres database
@@ -46,8 +59,9 @@ class Update_historical_simulation_db:
 
 		# ------------------- MAIN --------------------
 		# Establish connection
-		db   = create_engine("postgresql+psycopg2://postgres:{0}@localhost:5432/{1}".format(pgres_password, 
- 																							pgres_databasename))
+		db   = create_engine("postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
+																					   pgres_password,
+																					   pgres_databasename))
 
 		# Connect to database out of for loop
 		conn = db.connect()

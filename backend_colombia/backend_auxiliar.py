@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 import re
 import math
 import requests
@@ -19,10 +21,6 @@ def get_station_info():
 	# General informatio
 	file_name     = './data/CNE_IDEAM.csv'
 	col_to_get = ['CODIGO', 'altitud', 'DEPARTAMENTO', 'AREA_OPERATIVA', 'AREA_HIDROGRAFICA', 'ZONA_HIDROGRAFICA']
-	# Postgres secure data
-	gres_password     = 'pass'
-	pgres_databasename = 'gess_streamflow_co'
-	pgres_tablename    = 'stations_info'
 
 	# ---------- MAIN ---------
 	## Read dataframe

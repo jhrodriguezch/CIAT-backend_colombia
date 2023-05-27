@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 import io
 import sys
 import requests
@@ -22,9 +24,21 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 class Update_historical_observed_data:
 	def __init__(self):
+		# Change the work directory
+		user = os.getlogin()
+		user_dir = os.path.expanduser('~{}'.format(user))
+		os.chdir(user_dir)
+		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+
+		# Import enviromental variables
+		load_dotenv()
+		DB_USER = os.getenv('DB_USER')
+		DB_PASS = os.getenv('DB_PASS')
+		DB_NAME = os.getenv('DB_NAME')
+
 		# Postgres user data pass
-		pgres_password     = 'pass'
-		pgres_databasename = 'gess_streamflow_co'
+		pgres_password     = DB_PASS
+		pgres_databasename = DB_NAME
 		pgres_table_name   = 'observed_streamflow_data'
 
 		# Stations column name from postgres database
@@ -44,7 +58,9 @@ class Update_historical_observed_data:
 
 		# --------------- MAIN ------------------
 		# Establish connection
-		db   = create_engine("postgresql+psycopg2://postgres:{0}@localhost:5432/{1}".format(pgres_password, pgres_databasename))
+		db   = create_engine("postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
+																					   pgres_password, 
+																					   pgres_databasename))
 
 		# Connection
 		conn = db.connect()

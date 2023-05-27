@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 import psycopg2
 import pandas as pd
 import datetime as dt
@@ -14,9 +16,24 @@ from backend_auxiliar import get_data_wfs
 
 class Update_drainage_db:
 	def __init__(self):
+
+		# Change the work directory
+		user = os.getlogin()
+		user_dir = os.path.expanduser('~{}'.format(user))
+		os.chdir(user_dir)
+		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+
+
+		# Import enviromental variables
+		load_dotenv()
+		DB_USER = os.getenv('DB_USER')
+		DB_PASS = os.getenv('DB_PASS')
+		DB_NAME = os.getenv('DB_NAME')
+
 		# Postgres secure data
-		pgres_password     = 'pass'
-		pgres_databasename = 'gess_streamflow_co'
+		pgres_password     = DB_PASS
+		pgres_databasename = DB_NAME
+
 		pgres_tablename    = 'drainage'
 
 		# Hydroshare wfs data to download
@@ -33,7 +50,9 @@ class Update_drainage_db:
 
 		# ------------------- MAIN -------------------
 		# Establish connection
-		db   = create_engine("postgresql+psycopg2://postgres:{0}@localhost:5432/{1}".format(pgres_password, pgres_databasename))
+		db   = create_engine("postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
+																					   pgres_password, 
+																					   pgres_databasename))
 
 		# Build hydroshare link
 		full_url = url + '?' + '&'.join([ f'{key}={value}' for key, value in params.items() ])
