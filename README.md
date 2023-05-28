@@ -16,6 +16,7 @@ This tool facilitates the population of databases created for the tools develope
     re
     math
     numpy
+    dotenv
     pandas
     requests
     datetime
@@ -49,6 +50,9 @@ Contributors names and contact info
 Eng. Jhonatan Chaves [@jhrodriguezch](https://github.com/jhrodriguezch)
 
 ## Version History
+
+* 0.2
+    * Only historical validation toll database is build.
 
 * 0.1
     * Initial Release
