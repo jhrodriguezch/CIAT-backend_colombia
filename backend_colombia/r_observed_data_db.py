@@ -1,11 +1,11 @@
 import os
-from dotenv import load_dotenv
 import io
 import sys
 import requests
 import psycopg2
 import pandas as pd
 import datetime as dt
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
 import warnings
@@ -29,6 +29,7 @@ class Update_historical_observed_data:
 		user_dir = os.path.expanduser('~{}'.format(user))
 		os.chdir(user_dir)
 		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+		# os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
 
 		# Import enviromental variables
 		load_dotenv()

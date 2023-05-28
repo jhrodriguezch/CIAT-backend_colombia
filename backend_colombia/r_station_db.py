@@ -23,6 +23,7 @@ class Update_station_db:
 		user_dir = os.path.expanduser('~{}'.format(user))
 		os.chdir(user_dir)
 		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+		# os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
 
 		# Import enviromental variables
 		load_dotenv()

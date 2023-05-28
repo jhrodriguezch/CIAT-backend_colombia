@@ -33,7 +33,6 @@ class Update_forecast_record_db:
 		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
 		# os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
 
-
 		# Import enviromental variables
 		load_dotenv()
 		DB_USER = os.getenv('DB_USER')
@@ -66,8 +65,8 @@ class Update_forecast_record_db:
 		# ------------------- MAIN --------------------
 		# Establish connection
 		db   = create_engine("postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
-																					  pgres_password, 
-																					  pgres_databasename))
+																					   pgres_password, 
+																					   pgres_databasename))
 	
 		# Read comid list
 		conn = db.connect()
@@ -149,7 +148,7 @@ class Update_forecast_record_db:
 		# Insert to database
 		df.to_sql(self.pgres_tablename_func(comid), con=db, if_exists='replace', index=True)
 
-		print('Download : {}'.format(comid))
+		# print('Download : {}'.format(comid))
 
 		return 0
 

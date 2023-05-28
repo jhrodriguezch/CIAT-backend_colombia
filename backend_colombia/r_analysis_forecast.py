@@ -1,9 +1,9 @@
 import os
-from dotenv import load_dotenv
 import datetime
 import numpy as np
 import pandas as pd
 import geoglows as ggs
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
 from backend_auxiliar import gumbel_1
@@ -22,7 +22,7 @@ class Update_alarm_level:
 		user_dir = os.path.expanduser('~{}'.format(user))
 		os.chdir(user_dir)
 		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
-
+		# os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
 
 		# Import enviromental variables
 		load_dotenv()
@@ -53,9 +53,9 @@ class Update_alarm_level:
 
 		######################### MAIN ########################
 		# Establish connection
-		db   = create_engine("postgresql+psycopg2://{0}}:{1}@localhost:5432/{2}".format(DB_USER,
-																						pgres_password,
-																						pgres_databasename))
+		db   = create_engine("postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
+																					   pgres_password,
+																					   pgres_databasename))
 
 		# Load data to transform
 		conn = db.connect()
@@ -253,8 +253,8 @@ class Update_alarm_level:
 	def __get_warning_level__(self, comid, data):
 		# Stats
 		max_annual_flow = data.groupby(data.index.year).max()
-		mean_value = np.mean(max_annual_flow.iloc[:,0].values)
-		std_value = np.std(max_annual_flow.iloc[:,0].values)
+		mean_value      = np.mean(max_annual_flow.iloc[:,0].values)
+		std_value       = np.std(max_annual_flow.iloc[:,0].values)
 
 		# Return periods
 		return_periods_values = []
