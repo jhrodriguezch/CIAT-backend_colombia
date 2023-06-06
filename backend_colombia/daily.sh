@@ -2,7 +2,7 @@
 
 # Daily bash file
 
-cd ~/backend_colombia
+cd ~/CIAT-backend_colombia/backend_colombia
 eval "$(conda shell.bash hook)"
 conda activate gess
 

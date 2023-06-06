@@ -31,8 +31,11 @@ class Update_forecast_db:
 		user = os.getlogin()
 		user_dir = os.path.expanduser('~{}'.format(user))
 		os.chdir(user_dir)
-		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
-		# os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
+
+		try:
+			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+		except:
+			os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
 
 
 		# Import enviromental variables
@@ -53,10 +56,10 @@ class Update_forecast_db:
 
 		# Comid column name from postgres database
 		# TODO : Only for test
-		# station_table_name = 'drainage'
-		station_table_name = 'stations_streamflow'
-		# station_comid_name = 'HydroID'
-		station_comid_name = 'comid'
+		station_table_name = 'drainage'
+		# station_table_name = 'stations_streamflow'
+		station_comid_name = 'HydroID'
+		# station_comid_name = 'comid'
 
 		# GEOGloWS Streamflow Servises dictionary
 		url     = 'https://geoglows.ecmwf.int/api/ForecastEnsembles/'
@@ -92,7 +95,7 @@ class Update_forecast_db:
 		for chunk, comids in enumerate(comids_chunk, start = 1):
 
 			# Download data from comid
-			with concurrent.futures.ThreadPoolExecutor(max_workers = 2) as executor:
+			with concurrent.futures.ThreadPoolExecutor(max_workers = 5) as executor:
 				_ = list(executor.map(lambda c : self.__parallelization__(c, url_fun, db), 
 									  comids))
 

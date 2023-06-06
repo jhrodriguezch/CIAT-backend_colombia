@@ -1,4 +1,5 @@
 import os
+import sys
 import datetime
 import numpy as np
 import pandas as pd
@@ -15,14 +16,17 @@ from backend_auxiliar import gumbel_1
 #################################################################
 
 class Update_alarm_level:
-	def __init__(self):
+	def __init__(self, pgres_tab_obshist, pgres_tab_name):
 
 		# Change the work directory
 		user = os.getlogin()
 		user_dir = os.path.expanduser('~{}'.format(user))
 		os.chdir(user_dir)
-		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
-		# os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
+
+		try:
+			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+		except:
+			os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
 
 		# Import enviromental variables
 		load_dotenv()
@@ -35,14 +39,15 @@ class Update_alarm_level:
 		pgres_databasename = DB_NAME
 
 		# Database to update
-		pgres_tab_name        = 'stations_streamflow'
+		# pgres_tab_name        = 'stations_streamflow'
 		pgres_tab_coln_id     = 'codigo'
 		pgres_tab_coln_comid  = 'comid'
 		pgres_tab_coln_update = 'alert'
 
 		# Database
 		pgres_tab_dname_funct = lambda x : 's_'.format(x)
-		self.pgres_tab_obshist = 'observed_streamflow_data'
+		# self.pgres_tab_obshist = 'observed_streamflow_data'
+		self.pgres_tab_obshist = pgres_tab_obshist
 		self.pgres_tab_obshist_func = lambda x : 's_{}'.format(x)
 		self.pgres_tab_simhist_func = lambda x : 'hs_{}'.format(x)
 		self.pgres_tab_forecst_func = lambda x : 'f_{}'.format(x)
@@ -71,11 +76,11 @@ class Update_alarm_level:
 
 		# Fix pgres_tab_coln_update
 		df_id_alert.rename(columns={pgres_tab_coln_update : 'old'}, inplace=True)
-		
+
 		# Build alert to update
 		alert_rv = []
 		for num, row in df_id_alert.iterrows():
-
+			
 			row_id    = row[pgres_tab_coln_id]
 
 			row_comid = row[pgres_tab_coln_comid]
@@ -88,7 +93,7 @@ class Update_alarm_level:
 				sim_hist_df = self.load_simulated_historical_data(row_comid, conn)
 				forecast_df = self.load_forecast_data(row_comid, conn)
 			finally:
-				conn.close()
+				conn.close()		
 
 			# Fix column index
 			forecast_df.set_index('datetime', inplace=True)
@@ -103,6 +108,13 @@ class Update_alarm_level:
 
 			# Fix simulated and observed data at same dates
 			sim_hist_df, obs_hist_df = self.__asincro_df__(sim_hist_df, obs_hist_df)
+
+			
+			if len(obs_hist_df.index.month.unique()) < 12:
+				print(15 * '-')
+				print('Problem with station')
+				print(row_id)
+				print(15 * '-')
 
 			# Bias correction fix data
 			forecast_df = self.__bias_correction_forecast__(fore_nofix = forecast_df,
@@ -122,8 +134,11 @@ class Update_alarm_level:
 
 			# Result
 			alert_rv.append(alert)
-			print(row_id, alert)
+			
+			if alert != 'R0':
+				print(row_id, alert)
 
+		# """
 		conn = db.connect()
 		try:
 			df = pd.read_sql('select * from {}'.format(pgres_tab_name), 
@@ -132,6 +147,7 @@ class Update_alarm_level:
 			df.to_sql(pgres_tab_name, conn, if_exists='replace', index=False)
 		finally:
 			conn.close()
+		# """
 
 
 	def __asincro_df__(self, sim, obs):
@@ -348,4 +364,13 @@ class Update_alarm_level:
 
 if __name__ == "__main__":
 	# Update alarm level
-	Update_alarm_level()
+	
+	print('Stream flow data update')
+	pgres_tab_obshist = 'observed_streamflow_data'
+	pgres_tab_name = 'stations_streamflow'
+	Update_alarm_level(pgres_tab_obshist, pgres_tab_name)
+	
+	print('Water level data update')
+	pgres_tab_obshist = 'observed_waterlevel_data'
+	pgres_tab_name = 'stations_waterlevel'
+	Update_alarm_level(pgres_tab_obshist, pgres_tab_name)

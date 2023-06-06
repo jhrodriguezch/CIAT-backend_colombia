@@ -23,13 +23,23 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
 class Update_historical_observed_data:
-	def __init__(self):
+	def __init__(self,  pgres_table_name, 
+						station_table_name,
+						station_id_name,
+						url_hs,
+						id_HS_stations,
+						func_url_build,
+						dict_names):
+
 		# Change the work directory
 		user = os.getlogin()
 		user_dir = os.path.expanduser('~{}'.format(user))
 		os.chdir(user_dir)
-		os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
-		# os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
+
+		try:
+			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+		except:
+			os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
 
 		# Import enviromental variables
 		load_dotenv()
@@ -40,22 +50,9 @@ class Update_historical_observed_data:
 		# Postgres user data pass
 		pgres_password     = DB_PASS
 		pgres_databasename = DB_NAME
-		pgres_table_name   = 'observed_streamflow_data'
 
-		# Stations column name from postgres database
-		station_table_name = 'stations_streamflow'
-		station_id_name    = 'codigo'
-
-		# URL from data in hydroshare	
-		url_hs         = 'https://www.hydroshare.org/resource/'
-		id_HS_stations = '1a02d68216f24a7fbde3669b7760652d'
-		func_url_build = lambda station : url_hs +\
-						 '{0}/data/contents/Discharge_Data/{1}.csv'.format(id_HS_stations, station)
-		self.dict_names = {'Datetime column name'    : 'Datetime',
-             	           'Datetime column format'  : '%Y-%m-%d',
-						   'Data column name'        : 'Streamflow (m3/s)',
-						   'Data column name prefix' : 's_'}
-
+		# URL from data in hydroshare
+		self.dict_names = dict_names
 
 		# --------------- MAIN ------------------
 		# Establish connection
@@ -77,6 +74,7 @@ class Update_historical_observed_data:
 		# Read data of stations
 		df = self.__data_from_hydroshare__(stations = stations,
 										   func_url = func_url_build)
+
 
 		# Make connection
 		conn = db.connect()
@@ -149,6 +147,8 @@ class Update_historical_observed_data:
 								 self.dict_names['Data column name prefix'] + str(id_name)},
 					  inplace = True)
 
+
+
 			print('Download : {}'.format(id_name))
 			return df
 
@@ -171,30 +171,55 @@ class Update_historical_observed_data:
 if __name__ == '__main__':
 	# TODO : Add download observed data for water level forecast
 	print(' Data database updating. '.center(70, '-'))
-	'''
-	if sys.argw[1] == '-streamflow'
-		pgres_table_name   = 'observed_streamflow_data'
-		station_table_name = 'stations_streamflow'
-		station_id_name    = 'codigo'
-		id_HS_stations = '1a02d68216f24a7fbde3669b7760652d'
-		func_url_build = lambda station : url_hs +\
-							'{0}/data/contents/Discharge_Data/{1}.csv'.format(id_HS_stations, station)
-		dict_names = {'Datetime column name'    : 'Datetime',
-					'Datetime column format'  : '%Y-%m-%d',
-					'Data column name'        : 'Streamflow (m3/s)',
-					'Data column name prefix' : 's_'}
-	
-	elif sys.argw[1] == '-waterlevel':
-		pgres_table_name   = 'observed_waterlevel_data'
-		station_table_name = 'stations_waterlevel'
-		station_id_name    = 'codigo'
-		id_HS_stations = ''
-		func_url_build = lambda station : url_hs +\
-							'{0}/data//{1}.csv'.format(id_HS_stations, station)
-		dict_names = {'Datetime column name'    : 'Datetime',
-					  'Datetime column format'  : '%Y-%m-%d',
-					  'Data column name'        : 'Streamflow (m3/s)',
-					  'Data column name prefix' : 's_'}
-	'''
-	Update_historical_observed_data()
+
+	# General data
+	url_hs             = 'https://www.hydroshare.org/resource/'
+
+
+	# """
+	print(' Streamflow '.center(70, '-'))
+	# For streamflow download
+	station_table_name = 'stations_streamflow'
+	pgres_table_name   = 'observed_streamflow_data'
+	station_id_name    = 'codigo'
+	id_HS_stations     = '1a02d68216f24a7fbde3669b7760652d'
+	func_url_build     = lambda station : url_hs +\
+						'{0}/data/contents/Discharge_Data/{1}.csv'.format(id_HS_stations, station)
+	dict_names = {'Datetime column name'    : 'Datetime',
+				  'Datetime column format'  : '%Y-%m-%d',
+				  'Data column name'        : 'Streamflow (m3/s)',
+				  'Data column name prefix' : 's_'}
+
+	Update_historical_observed_data(pgres_table_name, 
+									station_table_name,
+									station_id_name,
+									url_hs,
+									id_HS_stations,
+									func_url_build,
+									dict_names)
+	# """
+
+
+	print(' Waterlevel '.center(70, '-'))
+	# For waterlevel download
+	station_table_name = 'stations_waterlevel'
+	pgres_table_name   = 'observed_waterlevel_data'
+	station_id_name    = 'codigo'
+	id_HS_stations     = '1a02d68216f24a7fbde3669b7760652d'
+	func_url_build     = lambda station : url_hs +\
+						'{0}/data/contents/Water_Level_Data/{1}.csv'.format(id_HS_stations, station)
+	dict_names = {'Datetime column name'    : 'Datetime',
+				  'Datetime column format'  : '%Y-%m-%d',
+				  'Data column name'        : 'Water Level (cm)',
+				  'Data column name prefix' : 's_'}
+
+	Update_historical_observed_data(pgres_table_name, 
+									station_table_name,
+									station_id_name,
+									url_hs,
+									id_HS_stations,
+									func_url_build,
+									dict_names)
+
+
 	print(' Data database updated. '.center(70, '-'))

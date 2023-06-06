@@ -38,6 +38,8 @@ This tool facilitates the population of databases created for the tools develope
 ./daily.sh
 ```
 
+If you want to run in python terminal review the bash files.
+
 ## Help
 
 * You need run first onetimeonly.sh, follow by monthly.sh and finally, daily.sh 
@@ -50,6 +52,9 @@ Contributors names and contact info
 Eng. Jhonatan Chaves [@jhrodriguezch](https://github.com/jhrodriguezch)
 
 ## Version History
+
+* 0.3
+    * Add waterlevel data to download
 
 * 0.2
     * Only historical validation toll database is build.
