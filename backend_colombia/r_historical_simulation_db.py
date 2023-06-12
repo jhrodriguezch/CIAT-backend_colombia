@@ -1,11 +1,9 @@
 import os
-import sys
-from dotenv import load_dotenv
 import io
 import numpy as np
 import pandas as pd
 import datetime as dt
-import concurrent.futures
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
 import time
@@ -24,9 +22,6 @@ class Update_historical_simulation_db:
 
 		before = time.time()
 
-		# Postgres secure data
-		n_chunks = 10
-
 		# Change the work directory
 		user = os.getlogin()
 		user_dir = os.path.expanduser('~{}'.format(user))
@@ -35,7 +30,7 @@ class Update_historical_simulation_db:
 		try:
 			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
 		except:
-			os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
+			os.chdir("/home/jrc/colombia-tethys-apps/CIAT-backend_colombia/backend_colombia/")
 
 		# Import enviromental variables
 		load_dotenv()
@@ -66,51 +61,51 @@ class Update_historical_simulation_db:
 
 		# ------------------- MAIN --------------------
 		# Establish connection
-		db   = create_engine("postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
-																					   pgres_password,
-																					   pgres_databasename))
-
-		# Connect to database out of for loop
-		conn = db.connect()
+		db_text = "postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
+																			pgres_password,
+																			pgres_databasename)
+		db   = create_engine(db_text)
 		try:
-			# Read comids list
-			comids = pd.read_sql('select {} from {}'.format(station_comid_name, station_table_name), conn)\
-					   .values\
-					   .flatten()\
-					   .tolist()
+		# Connect to database out of for loop
+			conn = db.connect()
+			try:
+				# Read comids list
+				comids = pd.read_sql('select {} from {}'.format(station_comid_name, station_table_name), conn)\
+						.values\
+						.flatten()\
+						.tolist()
+			finally:
+				conn.close()
 		finally:
-			conn.close()
+			db.dispose()
 
 		# In case of one comid is requiered, only remove the comment simbol (#) and in the list add the
 		# comid to call
-		# comids = comids[:100]
 
-		# Split list for clear the cache memory
-		comids_chunk = np.array_split(comids, n_chunks)
-		
-		# Run chunk by chunk
-		for chunk, comids in enumerate(comids_chunk, start = 1):
-
-			# Download data and insert
-			with concurrent.futures.ThreadPoolExecutor(max_workers = 2) as executor:
-				_ = list(executor.map(lambda c : self.__parallelization__(c, url_fun, db),
-									  comids))
-
-			print('Update : {:.0f} %, Delay : {:.4f} seg.'.format(100 * chunk / n_chunks, time.time() - before))
-
-
-	def __parallelization__(self, c, url_fun, db):
-		session = db.connect()
+		# Run all
+		print(' Start update '.center(70, '-'))
+		db   = create_engine(db_text)
+		cmp = -1
 		try:
-		 	self.__download_data__(c, url_fun, conn=session)
+			for num, comid in enumerate(comids):
+				# Download data and insert - serial
+				# 1% -> 293.5884 seg.
+				self.__download_data__(comid = comid, url_fun = url_fun, conn = db)
+				
+				if int(np.floor(100 * num/len(comids))) > cmp:
+					cmp = int(np.floor(100 * num/len(comids)))
+					print('Update : {0:.2f}%. Time: {1}. Delay : {2:.2f} min'.format(100 * num / len(comids),
+																					dt.datetime.now(dt.timezone.utc),
+																					(time.time() - before)/ 60))
+
 		finally:
-		 	session.close()
+			db.dispose()
 
 
 	def __download_data__(self, 
 						  comid : str, 
-						  url_fun : "func",
-						  conn : "POSTGRES database connection"):
+						  url_fun,
+						  conn):
 		"""
 		Seriealized download function
 		Input:
@@ -133,19 +128,33 @@ class Update_historical_simulation_db:
 			df = data_request(url=url_comid, params=params_comid)
 			df = self.__build_dataframe__(df, url_comid, params_comid)
 
+		# Fix negative values
+		if df[self.dict_aux['Data column name']].min() < 0:
+			df[self.dict_aux['Data column name']] = df[self.dict_aux['Data column name']] - df[self.dict_aux['Data column name']].min()
+		
+		# Remove error in last simulation
+		df = df[df.index < '2023-03']
+
+		
 		# Fix column names for comid identify
 		df.rename(columns = {self.dict_aux['Data column name'] : \
 							 self.dict_aux['Data column name prefix'] + str(comid)},
 				  inplace = True)
 
+
+		# '''
 		# Insert data to database with close connection secured
-		df.to_sql(self.pgres_tablename_func(comid), con=conn, if_exists='replace', index=True)
+
+		session = conn.connect()
+		try:
+			df.to_sql(self.pgres_tablename_func(comid), con=session, if_exists='replace', index=True)
+		finally:
+			session.close()
 
 		del df
-
+		# '''
 		# print('Download : {}'.format(comid))
-
-		return 0
+		
 
 
 	def __build_dataframe__(self, input_data, url, params):
